@@ -27,3 +27,4 @@ clean:
 
 .PHONY: all
 all: $(BINDIR)/$(TARGET)
+
