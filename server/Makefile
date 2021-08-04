@@ -17,7 +17,7 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(BINDIR)/$(TARGET): $(OBJECTS)
-	$(CC) -o $@ $(OBJECTS)
+	$(CC) -o $@ $(OBJECTS) -lpthread
 
 .PHONY: clean
 clean:
