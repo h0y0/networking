@@ -4,7 +4,7 @@ OBJDIR	= obj
 BINDIR	= bin
 
 CC		= gcc
-TARGET	= server
+TARGET	= server_select
 CFLAGS	= -g -Wall -I$(HDRDIR)
 
 SOURCES	:= $(wildcard $(SRCDIR)/*.c)
@@ -14,11 +14,9 @@ OBJECTS	:= $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 REMOVE	:= rm -rf
 
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
-	mkdir -p $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(BINDIR)/$(TARGET): $(OBJECTS)
-	mkdir -p $(BINDIR)
 	$(CC) -o $@ $(OBJECTS)
 
 .PHONY: clean
