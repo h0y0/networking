@@ -10,15 +10,6 @@
 #define THREAD_MAX 1000
 #define BUFFER_MAX 1024
 
-char    buffer[BUFFER_MAX];
-int     buflen;
-
-pthread_mutex_t bufmutex    = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t  nonEmpty    = PTHREAD_COND_INITIALIZER;
-pthread_cond_t  full        = PTHREAD_COND_INITIALIZER;
-pthread_cond_t  nonFull     = PTHREAD_COND_INITIALIZER;
-
-
 void *peer_thread(void *arg);
 void *main_thread(void *arg);
 
@@ -51,10 +42,9 @@ void *main_thread(void *arg)
     for(;;)
     {
         FD_SET(s->socket,&r_set);
-        //FD_SET(s->socket,&e_set);
 
-        //printf("socket max: %d\n",socket_max);
         ready_count = select(socket_max + 1, &r_set, NULL,NULL,NULL);//&w_set, &e_set, NULL);
+
         if(ready_count < 0)
         {
             close_s(s);
@@ -63,8 +53,7 @@ void *main_thread(void *arg)
 
         if(FD_ISSET(s->socket,&r_set))
         {
-            int free_id = get_unused_p(s);
-            peer_t *p = accept_p(s); 
+            peer_t *p = accept_p(s);
             printf("new peer %s:%d\n",
                     inet_ntoa(*(struct in_addr *)(&(p->addr))),
                     ntohs(p->addr.sin_port));
@@ -76,11 +65,9 @@ void *main_thread(void *arg)
                 if(p->socket > socket_max)
                     socket_max = p->socket;
 
-                // TODO
-                // make new peer (consumer) thread
                 pthread_create(&(p->worker), NULL, (void *)peer_thread, p);
 
-                printf("accepted at %d\n",free_id);
+                printf("accepted at %ld\n",(long)p - (long)(s->client_list));
             }
             if(--ready_count <= 0)
                 continue;
@@ -89,20 +76,23 @@ void *main_thread(void *arg)
         for(int i = 0; i < sizeof(s->client_list)/sizeof(peer_t); ++i)
         {
             peer_t *p = &(s->client_list[i]);
-            if(p->socket < 0)
+            if(p->socket < 0) {
+                if (i < 3) printf("skip %d\n", i);
                 continue;
+            }
             if(FD_ISSET(p->socket, &r_set))
             {
                 pthread_mutex_lock(&(p->bufmutex));
-
                 int readbytes = read(p->socket,p->buf+p->buflen,sizeof(p->buf) - p->buflen);
-                p->buflen += readbytes;
-                //printf("ready_count:%d\n", readbytes);
-
                 pthread_mutex_unlock(&(p->bufmutex));
 
                 if(readbytes > 0)
+                {
+                    p->buflen += readbytes;
+                    p->newdata = 1;
+                    printf("enqueue to socket %d\n", i);
                     pthread_cond_signal(&(p->nonEmpty));
+                }
                 else
                 {
                     FD_CLR(p->socket, &r_set);
@@ -136,8 +126,9 @@ void *peer_thread(void *arg)
     for(;;)
     {
         pthread_mutex_lock(&(p->bufmutex));
-        while(p->buflen == 0)
+        while(p->newdata == 0)
             pthread_cond_wait(&(p->nonEmpty), &(p->bufmutex));
+        p->newdata = 0;
         process_p((peer_t *)arg);
         pthread_mutex_unlock(&(p->bufmutex));
     }
@@ -152,13 +143,16 @@ void process_p(peer_t *p)
 
     while(p->buflen > 0)
     {
+        uint64_t tid;
+        pthread_threadid_np(p->worker,&tid);
+        printf("thread id: %llu\t",tid);
         // fill header
         header_t *h = (header_t *)(p->buf);
 
         // invalid header
         if(h->identifier != 1234 || h->len > sizeof(p->buf))
         {
-            //printf("invalid packet\n");
+            printf("invalid packet\n");
             p->buflen = 0;
             return;
         }
@@ -166,14 +160,14 @@ void process_p(peer_t *p)
         // partial packet
         if(h->len > p->buflen)
         {
-            //printf("partial packet\n");
+            printf("partial packet\n");
             return;
         }
         
         // full message
         else
         {
-            printf("complete packet from peer %s:%d\n",
+            printf("complete packet from %s:%d\n",
                     inet_ntoa(*(struct in_addr *)&(p->addr)),
                     ntohs(p->addr.sin_port));
             //printf("packet length:\t%d\n",h->len);
@@ -186,7 +180,10 @@ void process_p(peer_t *p)
             if(p->buflen > 0)
                 memmove(p->buf, p->buf + h->len, p->buflen);
             else
+            {
                 p->buflen = 0;
+                return;
+            }
         }
     }
 }

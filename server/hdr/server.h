@@ -19,7 +19,7 @@ struct header
 
 struct peer
 {
-    int socket, buflen;
+    int socket, buflen, newdata;
     struct sockaddr_in addr;
     char buf[BUFFER_MAX];
     pthread_t worker;

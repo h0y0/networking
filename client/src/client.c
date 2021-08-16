@@ -50,11 +50,13 @@ int main(int argc, char const *argv[])
         printf("len: %d\n",h.len);
 
         write(sock, &h, sizeof(h));
-        write(sock, msg, i/2);
-        sleep(1);
-        write(sock, msg + i/2, i - i/2);
+        //write(sock, msg, i/2);
+        //sleep(1);
+        //write(sock, msg + i/2, i - i/2);
+        write(sock,msg,i);
+        sleep(1);    
     }
-
+    
     close(sock);
 
     return 0;
