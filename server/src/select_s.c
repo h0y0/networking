@@ -31,18 +31,21 @@ void *main_thread(void *arg)
     server_t *s = (server_t *)arg;
 
     fd_set r_set, w_set, e_set; 
+    fd_set active_fd_set;
 
     FD_ZERO(&r_set);
     FD_ZERO(&w_set);
     FD_ZERO(&e_set);
+
+    FD_ZERO(&active_fd_set);
+    FD_SET(s->socket, &active_fd_set);
 
     int socket_max = s->socket;
     int ready_count;
 
     for(;;)
     {
-        FD_SET(s->socket,&r_set);
-
+        r_set = active_fd_set;
         ready_count = select(socket_max + 1, &r_set, NULL,NULL,NULL);//&w_set, &e_set, NULL);
 
         if(ready_count < 0)
@@ -61,7 +64,7 @@ void *main_thread(void *arg)
                 printf("rejected, too many clients\n");
             else
             {
-                FD_SET(p->socket,&r_set);
+                FD_SET(p->socket,&active_fd_set);
                 if(p->socket > socket_max)
                     socket_max = p->socket;
 
@@ -69,8 +72,8 @@ void *main_thread(void *arg)
 
                 printf("accepted at %ld\n",(long)p - (long)(s->client_list));
             }
-            if(--ready_count <= 0)
-                continue;
+            //if(--ready_count <= 0)
+             //   continue;
         }
 
         for(int i = 0; i < sizeof(s->client_list)/sizeof(peer_t); ++i)
@@ -143,9 +146,10 @@ void process_p(peer_t *p)
 
     while(p->buflen > 0)
     {
-        uint64_t tid;
-        pthread_threadid_np(p->worker,&tid);
-        printf("thread id: %llu\t",tid);
+        //uint64_t tid;
+        //pthread_threadid_np(p->worker,&tid);
+        //printf("thread id: %llu\t",tid);
+        printf("thread id: %lu\t",pthread_self());
         // fill header
         header_t *h = (header_t *)(p->buf);
 
