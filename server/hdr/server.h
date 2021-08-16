@@ -25,6 +25,7 @@ struct peer
     pthread_t worker;
     pthread_mutex_t bufmutex;
     pthread_cond_t nonEmpty;
+    int done;
 };
 
 struct server

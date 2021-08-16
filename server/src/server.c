@@ -75,6 +75,7 @@ peer_t *accept_p(server_t *s)
             p->socket = accept_w(s->socket,(struct sockaddr *)&(p->addr),&client_len);
             p->buflen = 0;
             p->newdata = 0;
+            p->done = 0;
             return p;
         }
     }

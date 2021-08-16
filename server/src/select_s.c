@@ -72,6 +72,7 @@ void *main_thread(void *arg)
 
                 printf("accepted at %ld\n",(long)p - (long)(s->client_list));
             }
+
             if(--ready_count <= 0)
                 continue;
         }
@@ -85,9 +86,12 @@ void *main_thread(void *arg)
             }
             if(FD_ISSET(p->socket, &r_set))
             {
+                if (i < 3) printf("right before lock of sock %d\n", i);
                 pthread_mutex_lock(&(p->bufmutex));
                 int readbytes = read(p->socket,p->buf+p->buflen,sizeof(p->buf) - p->buflen);
+                printf("socket %d has data %d bytes\n", i, readbytes);
                 pthread_mutex_unlock(&(p->bufmutex));
+                if (i < 3) printf("right after lock of sock %d\n", i);
 
                 if(readbytes > 0)
                 {
@@ -99,12 +103,11 @@ void *main_thread(void *arg)
                 else
                 {
                     FD_CLR(p->socket, &active_fd_set);
-                    pthread_cancel(p->worker);
+                    p->done = 1;
+                    //pthread_cancel(p->worker);
                     //pthread_join(p->worker, NULL);
+                    printf("closed peer %s:%d\n", inet_ntoa(*(struct in_addr *)&(p->addr)), ntohs(p->addr.sin_port));
                     close_p(p);
-                    printf("closed peer %s:%d\n",
-                            inet_ntoa(*(struct in_addr *)&(p->addr)),
-                            ntohs(p->addr.sin_port));
                 }
 
                 if(--ready_count <= 0)
@@ -126,6 +129,7 @@ void *peer_thread(void *arg)
     peer_t *p = (peer_t *)arg;
     for(;;)
     {
+        if (p->done) break;
         pthread_mutex_lock(&(p->bufmutex));
         while(p->newdata == 0)
             pthread_cond_wait(&(p->nonEmpty), &(p->bufmutex));
