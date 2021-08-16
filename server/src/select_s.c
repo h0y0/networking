@@ -72,8 +72,8 @@ void *main_thread(void *arg)
 
                 printf("accepted at %ld\n",(long)p - (long)(s->client_list));
             }
-            //if(--ready_count <= 0)
-             //   continue;
+            if(--ready_count <= 0)
+                continue;
         }
 
         for(int i = 0; i < sizeof(s->client_list)/sizeof(peer_t); ++i)
@@ -98,9 +98,7 @@ void *main_thread(void *arg)
                 }
                 else
                 {
-                    FD_CLR(p->socket, &r_set);
-                    FD_CLR(p->socket, &e_set);
-                    FD_CLR(p->socket, &w_set);
+                    FD_CLR(p->socket, &active_fd_set);
                     pthread_cancel(p->worker);
                     //pthread_join(p->worker, NULL);
                     close_p(p);
