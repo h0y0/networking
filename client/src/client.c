@@ -12,9 +12,8 @@ typedef struct header {
 
 int main(int argc, char const *argv[])
 {
-    int sock = 0, valread;
+    int sock = 0;
     struct sockaddr_in serv_addr;
-    char buffer[1024] = {0};
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("\n Socket creation error \n");
@@ -41,6 +40,7 @@ int main(int argc, char const *argv[])
 
     header_t h;
     h.magic = 1234;
+/*
     char msg[27] = "abcdefghijklmnopqrstuvwxyz";
     unsigned long i;
 
@@ -55,8 +55,27 @@ int main(int argc, char const *argv[])
         //write(sock, msg + i/2, i - i/2);
         write(sock,msg,i);
         sleep(1);    
+        read(sock,
     }
-    
+  */
+
+    char buf[1024];
+    int n, r, sl;
+
+    for (;;) {
+        printf("\nsend: ");
+        n = 0;
+        while((buf[n++] = getchar()) != '\n');
+        buf[n - 1] = '\0';
+        h.len = sizeof(header_t) + strlen(buf);
+        write(sock,&h,sizeof(h));
+        write(sock,buf,strlen(buf));
+        memset(buf,0,1024);
+        r = read(sock,buf,sizeof(buf));
+        sl = strlen(buf);
+        printf("\nrecv: %*.*s",sl,sl,buf);
+    }
+
     close(sock);
 
     return 0;

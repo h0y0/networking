@@ -54,11 +54,11 @@ void *main_thread(void *arg)
         if(FD_ISSET(s->socket,&r_set))
         {
             peer_t *p = accept_p(s);
-            printf("new peer %s:%d\n",
+            printf("incoming connection from %s:%d\n",
                     inet_ntoa(*(struct in_addr *)(&(p->addr))),
                     ntohs(p->addr.sin_port));
             if(p == NULL)
-                printf("rejected, too many clients\n");
+                printf("rejected: too many peers\n");
             else
             {
                 FD_SET(p->socket,&r_set);
@@ -67,7 +67,7 @@ void *main_thread(void *arg)
 
                 pthread_create(&(p->worker), NULL, (void *)peer_thread, p);
 
-                printf("accepted at %ld\n",(long)p - (long)(s->client_list));
+                printf("accepted: index %ld\n",(long)p - (long)(s->client_list));
             }
             if(--ready_count <= 0)
                 continue;
@@ -76,21 +76,26 @@ void *main_thread(void *arg)
         for(int i = 0; i < sizeof(s->client_list)/sizeof(peer_t); ++i)
         {
             peer_t *p = &(s->client_list[i]);
+            /*
             if(p->socket < 0) {
                 if (i < 3) printf("skip %d\n", i);
                 continue;
             }
+            */
             if(FD_ISSET(p->socket, &r_set))
             {
+                //if (i < 3) printf("right before lock of sock %d\n", i);
                 pthread_mutex_lock(&(p->bufmutex));
                 int readbytes = read(p->socket,p->buf+p->buflen,sizeof(p->buf) - p->buflen);
+                //printf("socket %d has data %d bytes\n", i, readbytes);
                 pthread_mutex_unlock(&(p->bufmutex));
+                //if (i < 3) printf("right after lock of sock %d\n", i);
 
                 if(readbytes > 0)
                 {
                     p->buflen += readbytes;
                     p->newdata = 1;
-                    printf("enqueue to socket %d\n", i);
+                    //printf("enqueue to socket %d\n", i);
                     pthread_cond_signal(&(p->nonEmpty));
                 }
                 else
@@ -175,6 +180,9 @@ void process_p(peer_t *p)
 
             int strlen = h->len - sizeof(header_t);
             printf("payload:%*.*s\n",strlen,strlen,p->buf + sizeof(header_t));
+
+            //write
+            write(p->socket, p->buf + sizeof(header_t), strlen);
 
             p->buflen -= h->len;
             if(p->buflen > 0)
