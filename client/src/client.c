@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -12,6 +13,10 @@ typedef struct header {
 
 int main(int argc, char const *argv[])
 {
+    if(argc < 2) {
+        printf("usage: ./client [ip]");
+        exit(1);
+    }
     int sock = 0;
     struct sockaddr_in serv_addr;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -26,7 +31,7 @@ int main(int argc, char const *argv[])
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
     // Convert IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0) 
+    if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0) 
     {
         printf("\nInvalid address/ Address not supported \n");
         return -1;
@@ -63,7 +68,7 @@ int main(int argc, char const *argv[])
     int n, r, sl;
 
     for (;;) {
-        printf("\nsend: ");
+        printf("\n\nsend: ");
         n = 0;
         while((buf[n++] = getchar()) != '\n');
         buf[n - 1] = '\0';
